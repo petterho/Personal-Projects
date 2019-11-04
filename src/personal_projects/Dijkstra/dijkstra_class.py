@@ -16,7 +16,7 @@ class Path:
 
 
 class PriorityQueue:
-    def __init__(self):
+    def __init__(self, nodes):
         self.priority_queue = []
 
     def __len__(self):
@@ -25,9 +25,8 @@ class PriorityQueue:
     def __getitem__(self, item):
         return self.priority_queue[item]
 
-    def __setitem__(self, key, value):
-        # Not sure about this
-        self.priority_queue.append(value)
+    def add_item(self, item):
+        self.priority_queue.append(item)
 
 
 class Dijkstra:
