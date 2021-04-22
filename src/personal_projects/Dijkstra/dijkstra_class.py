@@ -4,41 +4,45 @@ __author__ = 'Petter Bøe Hørtvedt'
 __email__ = 'petterho@nmbu.no'
 
 from src.personal_projects.Dijkstra.test_nodes import path_dict
+from functools import total_ordering
 
 
-class Path:
-    def __init__(self, shortest_from, total_length):
-        self.shortest_from = shortest_from
-        self.length = total_length
-
-    def __len__(self):
-        return len(self.length)
-
-
-class PriorityQueue:
-    def __init__(self, nodes):
-        self.priority_queue = []
+@total_ordering
+class Node:
+    def __init__(self, parents, offsprings):
+        self.parents = parents
+        self.offsprings = offsprings
+        self.shortest_from = None
+        self.length = float('inf')
 
     def __len__(self):
-        return len(self.priority_queue)
+        return self.length
 
-    def __getitem__(self, item):
-        return self.priority_queue[item]
+    def __eq__(self, other):
+        return len(self) == len(other)
 
-    def add_item(self, item):
-        self.priority_queue.append(item)
+    def __lt__(self, other):
+        return len(self) < len(other)
+
+    def __repr__(self):
+        return f'Length: {self.length}'
+
+
+
 
 
 class Dijkstra:
-    def __init__(self, nodes, start, stop):
-        self.nodes = nodes
-        self.position = None
-        self.start = start
-        self.stop = stop
+    def __init__(self, paths):
+        self.priority_list = []
+        self._make_priority_list(paths)
 
-        self.shortest_way_dict = {}
-        for key in nodes:
-            if key == start:
-                self.shortest_way_dict[key] = {'distance': 0}
-            else:
-                self.shortest_way_dict[key] = {'distance': float('inf')}
+    def _make_priority_list(self, paths):
+        self.priority_list = []
+        for name, path in paths.items():
+            self.priority_list.append(Node(name, path))
+
+    def sort_priority_list(self):
+        self.priority_list = sorted(self.priority_list)
+
+if __name__ == '__main__':
+    dij = Dijkstra(path_dict)

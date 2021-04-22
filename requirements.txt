@@ -16,3 +16,7 @@ pytest
 pytest-cov
 pytest-randomly
 
+
+future~=0.18.2
+pygame~=2.0.0
+setuptools~=50.3.0
