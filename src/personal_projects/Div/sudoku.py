@@ -130,12 +130,12 @@ def create_sudoku_and_solution(number_of_prefilled=30, max_n_solutions=1,
         for _ in range(number_of_prefilled):
             coordinates = rng.integers(9, size=2)
             possibilities = possible_numbers(sud_mat, coordinates[0],
-                                              coordinates[1])
+                                             coordinates[1])
             while sud_mat[coordinates[0], coordinates[1]] != 0 or len(
                     possibilities) == 0:
                 coordinates = rng.integers(9, size=2)
                 possibilities = possible_numbers(sud_mat, coordinates[0],
-                                                  coordinates[1])
+                                                 coordinates[1])
             sud_mat[coordinates[0], coordinates[1]] = rng.choice(
                 list(possibilities))
         try:
