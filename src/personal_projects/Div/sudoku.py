@@ -72,11 +72,13 @@ def solve_sudoku_count_sol(sud_mat, stopping_point=30, count=0, verbose=0):
 
 def add_numbers_till_one_solution(sud_mat, num_sol, rng, max_n_solutions,
                                   number_of_prefilled, verbose=0):
-    if num_sol == 1:
-        return sud_mat
     num_sol_before = num_sol
     number_of_prefilled_before = number_of_prefilled
     reset_counter = 0
+
+    if num_sol == 1:
+        return sud_mat, number_of_prefilled, reset_counter
+
     while num_sol != 1:
         if verbose > 1:
             print(f'Resetting for {reset_counter}th time to find one '
@@ -174,7 +176,7 @@ def create_sudoku_and_solution(number_of_prefilled=30, max_n_solutions=1,
 
 
 if __name__ == '__main__':
-    sudok, sol_sudok, num = create_sudoku_and_solution(23, max_n_solutions=30,
+    sudok, sol_sudok, num = create_sudoku_and_solution(25, max_n_solutions=1,
                                                        one_sol=True,
                                                        verbose=2)
     print('Sudoku:')
