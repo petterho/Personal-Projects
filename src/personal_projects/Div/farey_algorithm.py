@@ -110,8 +110,8 @@ def halving_alg(n, largest_divisor=100):
 
 
 if __name__ == '__main__':
-    n_ = 0.701
-    largest_divisor0 = 1000
+    n_ = pi
+    largest_divisor0 = 10000
     sol_halving = halving_alg(n_, largest_divisor0)
     sol_farey = farey_alg(n_, largest_divisor0)
     print('-----------------------------------------')

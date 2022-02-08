@@ -66,13 +66,14 @@ class SnakeBodyPart:
 
 
 class Snake:
-    def __init__(self, direction=None, head=None, body=None):
+    def __init__(self, direction=None, head=None, body=None, move=None):
         standard_snake = {'direction': 1,
                           'head': SnakeBodyPart(1, 1),
                           'body': Queue([SnakeBodyPart(1, 5),
                                          SnakeBodyPart(1, 4),
                                          SnakeBodyPart(1, 3),
-                                         SnakeBodyPart(1, 2)])}
+                                         SnakeBodyPart(1, 2)]),
+                          'move': 0.25}
         if direction is None and head is None and body is None:
             self.__init__(**standard_snake)
         else:
@@ -80,6 +81,8 @@ class Snake:
             self.head = head
             self.body = body
             self.chop_tail_bool = True
+            self.chop_tail_counter = 1/move
+            self.move = move
 
     def __str__(self):
         return f'Direction: {self.direction} \n' \
@@ -110,6 +113,7 @@ class Snake:
 
     def eat(self):
         self.chop_tail_bool = False
+        self.chop_tail_counter = 0
 
     def change_direction(self, direction):
         if direction == 0 and self.direction != 2:
@@ -137,43 +141,52 @@ class Snake:
         else:
             self.chop_tail_bool = True
 
-    def move_half(self):
+    def move_partly(self):
         new_head = copy(self.head)
         if self.direction == 0:
-            new_head.y += -0.5
+            new_head.y += -self.move
         if self.direction == 1:
-            new_head.x += 0.5
+            new_head.x += self.move
         if self.direction == 2:
-            new_head.y += 0.5
+            new_head.y += self.move
         if self.direction == 3:
-            new_head.x += -0.5
+            new_head.x += -self.move
         self.add_head(new_head)
-        if self.chop_tail_bool:
-            self.chop_tail()
+        if self.chop_tail_counter < 1/self.move:
+            self.chop_tail_counter += 1
         else:
-            self.chop_tail_bool = True
+            self.chop_tail()
 
 
 class Game:
     def __init__(self, options=None):
         self.options_dict = {
             # Variables
-            'dimensions': 40,
-            'dim_square': 10,
-            'start_speed': 2,
+            'dimensions': 20,
+            'dim_square': 20,
+            'start_speed': 1,
             'speed_increase': 0.1,
             # Colors
             'color_snake_body': (0, 200, 0),
             'color_snake_head': (0, 0, 255),
             'color_food': (255, 0, 0),
             'color_border': (255, 255, 255),
-            'color_playing_field': (0, 0, 0)
+            'color_playing_field': (0, 0, 0),
+
+            'snake': {'direction': 1,
+                      'head': SnakeBodyPart(1, 1),
+                      'body': Queue([SnakeBodyPart(1, 5),
+                                     SnakeBodyPart(1, 4),
+                                     SnakeBodyPart(1, 3),
+                                     SnakeBodyPart(1, 2)]),
+                      'move': 0.25}
         }
 
         if options is not None:
             self.set_options(options)
 
-        self.snake = Snake()
+        self.frames_per_move = int(1 / self.options_dict['snake']['move'])
+        self.snake = Snake(**self.options_dict['snake'])
         self.food = SnakeBodyPart(2, 2)
         self.food_set = None
         self.place_food()
@@ -343,12 +356,11 @@ class Game:
 
         """
         self.draw_game()
-        only_move = False
+        only_move = self.frames_per_move
         while not self.game_over:
-            if only_move:
-                self.snake.move_half()
-                self.check_for_items()
-                only_move = False
+            if only_move < self.frames_per_move - 1:
+                self.snake.move_partly()
+                only_move += 1
             else:
                 looking_for_moves = True
                 while looking_for_moves:
@@ -362,12 +374,15 @@ class Game:
                         looking_for_moves = False
                     elif event.type == pygame.NOEVENT:
                         break
+                print(f'Snake head: {self.snake.head}')
+                print(f'Food: {self.food}')
 
-                self.snake.move_half()
-                only_move = True
+                self.check_for_items()
+                self.snake.move_partly()
+                only_move = 0
 
             self.draw_game()
-            self.clock.tick(self.speed)
+            self.clock.tick(self.speed * self.frames_per_move)
 
         pygame.quit()
         quit()
@@ -378,14 +393,22 @@ if __name__ == '__main__':
         # Variables
         'dimensions': 8,
         'dim_square': 20,
-        'start_speed': 4,
-        'speed_increase': 0.1,
+        'start_speed': 5,
+        'speed_increase': 0.0,
         # Colors
         'color_snake_body': (0, 200, 0),
         'color_snake_head': (0, 0, 255),
         'color_food': (255, 0, 0),
         'color_border': (255, 255, 255),
-        'color_playing_field': (0, 0, 0)
+        'color_playing_field': (0, 0, 0),
+
+        'snake': {'direction': 1,
+                  'head': SnakeBodyPart(1, 1),
+                  'body': Queue([SnakeBodyPart(1, 5),
+                                 SnakeBodyPart(1, 4),
+                                 SnakeBodyPart(1, 3),
+                                 SnakeBodyPart(1, 2)]),
+                  'move': 1/16} # Because of rounding error it has to be 1/2^n
     }
     game = Game(options_dict)
     game.play()
