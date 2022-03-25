@@ -120,12 +120,25 @@ class QueensOfChess:
         return self.solutions
 
     def recursion_queens(self, col, print_solutions=False):
+        """
+        The actual solving. It places a queen of it can and calls on itself
+        again until all queens are placed.
+
+        Parameters
+        ----------
+        col
+        print_solutions
+
+        Returns
+        -------
+
+        """
         # print(f'In recursion for the {col}th queen')
-        queens_uptil_now = self.queen_tiles.copy()
+        queens_up_til_now = self.queen_tiles.copy()
         if col >= 0:
             col -= 1
             for i in range(self.dim):
-                self.reset_and_place_queens(queens_uptil_now)
+                self.reset_and_place_queens(queens_up_til_now)
                 loc = (i, col + 1)
                 if loc in self.open_tiles:
                     self.place_queen(loc)
@@ -138,10 +151,21 @@ class QueensOfChess:
                     print(f'The {self.num_sol}. solution for board {self.dim} '
                           f'\n')
                     self.print_board()
-                self.reset_and_place_queens(queens_uptil_now)
+                self.reset_and_place_queens(queens_up_til_now)
 
 
 def find_number_of_solutions_for_different_sizes(max_size_board):
+    """
+    Just for finding the size of different boards. Is slow for larger boards.
+
+    Parameters
+    ----------
+    max_size_board
+
+    Returns
+    -------
+
+    """
     solutions_dict = {}
     for board_size in range(1, max_size_board + 1):
         q = QueensOfChess(board_size)
@@ -152,8 +176,8 @@ def find_number_of_solutions_for_different_sizes(max_size_board):
 
 
 if __name__ == '__main__':
-    n = 6
+    n = 8
     q = QueensOfChess(n)
-    sol = q.find_solutions(True)
+    sol = q.find_solutions(False)
     print(f'{n}x{n} with {n} queens has {len(sol)} solutions.')
 

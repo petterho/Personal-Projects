@@ -3,6 +3,7 @@ Project by Petter to look at Newtons method of finding roots
 """
 import random as r
 
+
 def grad_function(f, x, delta_x=0.001):
     g = (f(x + delta_x) - f(x)) / delta_x
     return g
