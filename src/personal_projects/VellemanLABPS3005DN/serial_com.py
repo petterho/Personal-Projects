@@ -7,6 +7,8 @@ import struct
 import random
 
 # Found a page for the almost equal TP3005P and a lib
+# Got this working, and I like my way better, but the battery and rest of
+# the other might be nice to implement in this his way.
 
 def small_check():
     ser = serial.Serial('COM8', 9600, timeout=1)
@@ -193,6 +195,8 @@ def check_of_class2():
     lab.follow_csv()
 
 if __name__ == '__main__':
-    check_of_class2()
+    #check_of_class()
+    lab = LABPS3005DN('COM7')
+    lab.close_serial()
 
 
