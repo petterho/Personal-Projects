@@ -2,8 +2,11 @@ import serial
 import pandas as pd
 import numpy as np
 import time
+from timeit import default_timer as timer
 import struct
 import random
+
+# Found a page for the almost equal TP3005P and a lib
 
 def small_check():
     ser = serial.Serial('COM8', 9600, timeout=1)
@@ -22,7 +25,7 @@ def small_check():
     ser.close()
 
 
-def value_to_fixed_width_string(value):
+def value_to_fixed_width_string_v(value):
     """
     It needs a five character value
 
@@ -40,17 +43,36 @@ def value_to_fixed_width_string(value):
     return value_string
 
 
+def value_to_fixed_width_string_i(value):
+    """
+    It needs a five character value
+
+
+    Parameters
+    ----------
+    value
+
+    Returns
+    -------
+
+    """
+    value_string = f'{value:1.3f}'
+    value_string = value_string.rjust(5, '0')
+    return value_string
+
+
 class LABPS3005DN:
-    def __init__(self, com, baudrate=9600, timeout=1):
+    def __init__(self, com, baudrate=9600, timeout=1, sleeptime=0.05):
         self.df = None
         self.status = None
         self.set_v = None
         self.set_i = None
         self.on = None
+        self.sleeptime = sleeptime
+        self.end_char = b'\\r\\n' #/b'/n'
         self.serial = serial.serial_for_url(com, baudrate=baudrate,
                                             timeout=timeout)
-        self.serial.write(b'*IDN?/n')
-        self.serial.flush()
+        self.write_serial(b'*IDN?')
         identification = self.serial.read_until()
         print(f'Connection: {identification}')
         self.get_status()
@@ -61,57 +83,65 @@ class LABPS3005DN:
     def read_csv(self, file='SequenceFile.csv'):
         self.df = pd.read_csv(file)
 
-    def write_serial(self):
+    def write_serial(self, finished_command_no_endchar):
+        time.sleep(self.sleeptime)
+        # Trying to find out if b'/n' or b'\\r\\n' is the thing
+        self.serial.write(finished_command_no_endchar + self.end_char)
+        self.serial.flush()
+        time.sleep(self.sleeptime)
+
+    def write_serial_continually(self):
         while True:
             input_string = input('Serial: ')
-            self.serial.write(input_string.encode())
-            self.serial.flush()
+            self.write_serial(input_string.encode())
             print(self.serial.read_until())
 
     def vset(self, value):
-        value_string = value_to_fixed_width_string(value)
-        v_string = b''.join([b'VSET1:', value_string.encode(), b'/n'])
-        self.serial.write(v_string)
-        self.serial.flush()
-        self.get_status()
+        value_string = value_to_fixed_width_string_v(value)
+        value_encoded = value_string.encode()
+        v_string = b''.join([b'VSET1:', value_encoded])
+        v_string_comp = b''.join([value_encoded, b'\n'])
+        # print(f'v_string: {v_string}, v_string_comp: {v_string_comp}')
+        while self.set_v != v_string_comp:
+            self.write_serial(v_string)
+            self.get_status()
 
     def iset(self, value):
-        value_string = value_to_fixed_width_string(value)
-        i_string = b''.join([b'ISET1:', value_string.encode(), b'/n'])
-        self.serial.write(i_string)
-        self.serial.flush()
-        self.get_status()
+        value_string = value_to_fixed_width_string_i(value)
+        value_encoded = value_string.encode()
+        i_string = b''.join([b'ISET1:', value_encoded])
+        i_string_comp = b''.join([value_encoded, b'\n'])
+        # print(f'i_string: {i_string}, i_string_comp: {i_string_comp}')
+        while self.set_i != i_string_comp:
+            self.write_serial(i_string)
+            self.get_status()
 
     def output_on(self):
-        if not self.on:
-            output_string = b'OUTPUT1/n'
-            self.serial.write(output_string)
-            self.serial.flush()
+        while not self.on:
+            output_string = b'OUTPUT1'
+            self.write_serial(output_string)
             self.get_status()
 
     def output_off(self):
-        if not self.on:
-            output_string = b'OUTPUT0/n'
-            self.serial.write(output_string)
-            self.serial.flush()
+        while not self.on:
+            output_string = b'OUTPUT0'
+            self.write_serial(output_string)
             self.get_status()
 
     def get_status(self, verbose=False):
         self.status = b''
         while len(self.status) == 0:
-            self.serial.write(b'STATUS?/n')
-            self.serial.flush()
+            self.write_serial(b'STATUS?')
             self.status = self.serial.read_until()
         if self.status[1] == 49:  # 49 is the binary for 1 in this encoding
             self.on = True
         else:
             self.on = False
 
-        self.serial.write(b'VSET1?/n')
-        self.serial.flush()
+        self.write_serial(b'VSET1?')
         self.set_v = self.serial.read_until()
-        self.serial.write(b'ISET1?/n')
-        self.serial.flush()
+        # print(type(self.set_v))
+        self.write_serial(b'ISET1?')
         self.set_i = self.serial.read_until()
         if verbose:
             print(f'STATUS: {self.status}, VSET: {self.set_v}, ISET: '
@@ -136,24 +166,33 @@ class LABPS3005DN:
                 self.info_csv_print(row)
                 self.vset(row['Uset(V)'])
                 self.iset(row['Iset(A)'])
-                time.sleep(row['Duration(s)'])
+                #time.sleep(row['Duration(s)']) # Old way
+                start = timer()
+                end = timer()
+                while end - start < row['Duration(s)']:
+                    end = timer()
 
 
 def check_of_class():
-    lab = LABPS3005DN('COM8')
+    lab = LABPS3005DN('COM7')
     lab.read_csv('SequenceFile.csv')
-    lab.get_status(True)
-    # print(value_to_fixed_width_string(1))
-    lab.vset(random.uniform(0, 30))
-    lab.get_status(True)
-    # lab.write_serial()
     # lab.follow_csv()
+    lab.vset(0.00)
+    lab.get_status(verbose=True)
+    lab.vset(5.17)
+    lab.get_status(verbose=True)
+    lab.iset(0.00)
+    lab.get_status(verbose=True)
+    lab.iset(1.47)
+    lab.get_status(verbose=True)
     lab.close_serial()
 
-if __name__ == '__main__':
-    lab = LABPS3005DN('COM8')
+def check_of_class2():
+    lab = LABPS3005DN('COM7')
     lab.read_csv('SequenceFile.csv')
     lab.follow_csv()
 
+if __name__ == '__main__':
+    check_of_class2()
 
 
