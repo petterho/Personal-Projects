@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+
+
 def gcd(a, b):
     if a == 0:
         return b
@@ -12,6 +14,7 @@ def gcd(a, b):
         r = a % b
         gcd_num = gcd(b, r)
         return gcd_num
+
 
 def yellowstone(n=1000):
     list_of_possibles = [i for i in range(1, n+1)]
@@ -28,6 +31,7 @@ def yellowstone(n=1000):
         if not found_number:
             break
     return perm
+
 
 def yellowstone_with_plot(n=1000):
     permutations = yellowstone(n)
