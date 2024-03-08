@@ -3,10 +3,11 @@ import math
 import numpy as np
 import random
 from collections import deque
+import copy
 
 
 class Ball:
-    def __init__(self, radius=1, mass=1, pos=(1, 1), vel=(0, 0),
+    def __init__(self, radius=1, mass=1, pos=(1, 1), vel=(1, 1),
                  color=(150, 0, 0)
                  ):
         self.radius = radius
@@ -49,7 +50,7 @@ class StationaryBall(Ball):
         pass
 
 
-def collision(ball1, ball2):
+def collision(ball1, ball2, elasticity_factor=1):
     """
     Modifies the balls
 
@@ -57,6 +58,7 @@ def collision(ball1, ball2):
     ----------
     ball1
     ball2
+    elasticity_factor
 
     Returns
     -------
@@ -84,10 +86,11 @@ def collision(ball1, ball2):
         u2 = v2 - 2 * m1 / (m2 + m1) * np.dot((v2 - v1), (x2 - x1)) / \
              np.linalg.norm(x2 - x1) ** 2 * (x2 - x1)
 
-        ball1.next_pos = pos_collision1 + (1-a) * u1
-        ball2.next_pos = pos_collision2 + (1-a) * u2
-        ball1.next_vel = u1
-        ball2.next_vel = u2
+        ball1.next_vel = u1 * elasticity_factor
+        ball2.next_vel = u2 * elasticity_factor
+        ball1.next_pos = pos_collision1 + (1-a) * ball1.next_vel
+        ball2.next_pos = pos_collision2 + (1-a) * ball2.next_vel
+
 
         # print(f'Etter: POS: {ball1.next_pos}\tVEL: {ball1.next_vel}')
 
@@ -145,7 +148,7 @@ def collision_point(ball1, ball2):
 def gravity(ball1, ball2, gravitational_constant):
     vector_ball1 = ball1.next_pos - ball2.next_pos
     r = np.linalg.norm(vector_ball1)
-    f = gravitational_constant * ball1.mass * ball2.mass / r ** 2
+    f = gravitational_constant * ball1.mass * ball2.mass / r ** 2 # Usually 2
 
     # Reason for minus is that the same vector is used
     a1 = - f / ball1.mass * vector_ball1 / r
@@ -176,6 +179,8 @@ class Game:
             'gravity': np.array((0, 1)),
             'gravitational_constant': 1,
             'friction': 0.99,
+            'elasticity_factor_wall': 1,
+            'elasticity_factor_ball': 1,
             'can_collide_value': 0,  # Used in debugging. Not used now
             'balls': [Ball(50, 1, (100, 350), (1, 1)),
                       Ball(50, 1, (300, 200), (0, 0))
@@ -190,7 +195,12 @@ class Game:
         self.gravitational_constant = self.options_dict[
             'gravitational_constant']
         self.friction = self.options_dict['friction']
+        self.elasticity_factor_wall = self.options_dict[
+            'elasticity_factor_wall']
+        self.elasticity_factor_ball = self.options_dict[
+            'elasticity_factor_ball']
         self.balls = self.options_dict['balls']
+        self.original_balls = [copy.copy(ball) for ball in self.balls]
 
         self.game_over = False
         self.frames = self.options_dict['frames']
@@ -233,14 +243,31 @@ class Game:
         if keystroke.key == pygame.K_LEFT:
             pass
         if keystroke.key == pygame.K_r:
-            self.__init__()
+            self.reset_balls()
 
-    def check_ball_with_balls(self):
+    def reset_balls(self):
+        balls = [copy.copy(ball) for ball in self.original_balls]
+        self.balls = balls
+
+    def check_ball_with_balls(self, elasticity_factor):
         for i, ball1 in enumerate(self.balls):
             for j, ball2 in enumerate(self.balls[i + 1:]):
-                collision(ball1, ball2)
+                collision(ball1, ball2, elasticity_factor)
 
-    def check_ball_with_walls(self):
+    def check_ball_with_walls(self, elasticity_factor=1):
+        """
+        The solution has a divide by speed that could be zero. This is a
+        problem, but not enough to be really concerned about
+
+
+        Parameters
+        ----------
+        elasticity_factor
+
+        Returns
+        -------
+
+        """
         for ball in self.balls:
 
             if ball.next_pos[0] + ball.radius > self.dim_field_x:
@@ -251,30 +278,34 @@ class Game:
                 a = (self.dim_field_x - ball.pos[0] - ball.radius) / \
                     ball.vel[0]
                 pos_wall = ball.pos + a * ball.vel
-                ball.next_vel = np.array((-ball.vel[0], ball.vel[1]))
+                ball.next_vel = np.array((-ball.vel[0], ball.vel[1])) * \
+                                elasticity_factor
                 ball.next_pos = pos_wall + (1-a) * ball.next_vel
 
                 # print(f'Etter: POS: {ball.next_pos}\t VEL: {ball.next_vel}')
             if ball.next_pos[0] - ball.radius <= 0:
                 a = (ball.radius - ball.pos[0]) / ball.vel[0]
                 pos_wall = ball.pos + a * ball.vel
-                ball.next_vel = np.array((-ball.vel[0], ball.vel[1]))
+                ball.next_vel = np.array((-ball.vel[0], ball.vel[1])) * \
+                                elasticity_factor
                 ball.next_pos = pos_wall + (1 - a) * ball.next_vel
             if ball.next_pos[1] + ball.radius >= self.dim_field_y:
                 a = (self.dim_field_y - ball.pos[1] - ball.radius) / \
                     ball.vel[1]
                 pos_wall = ball.pos + a * ball.vel
-                ball.next_vel = np.array((ball.vel[0], -ball.vel[1]))
+                ball.next_vel = np.array((ball.vel[0], -ball.vel[1])) * \
+                                elasticity_factor
                 ball.next_pos = pos_wall + (1 - a) * ball.next_vel
             if ball.next_pos[1] - ball.radius <= 0:
                 a = (ball.radius - ball.pos[1]) / ball.vel[1]
                 pos_wall = ball.pos + a * ball.vel
-                ball.next_vel = np.array((ball.vel[0], -ball.vel[1]))
+                ball.next_vel = np.array((ball.vel[0], -ball.vel[1])) * \
+                                elasticity_factor
                 ball.next_pos = pos_wall + (1 - a) * ball.next_vel
 
     def check_ball_collisions(self):
-        self.check_ball_with_balls()
-        self.check_ball_with_walls()
+        self.check_ball_with_balls(self.elasticity_factor_ball)
+        self.check_ball_with_walls(self.elasticity_factor_wall)
 
     def update_gravity_between_balls(self):
         for i, ball1 in enumerate(self.balls):
@@ -302,9 +333,9 @@ class Game:
             ball.update_next_velocity(self.friction)
 
     def update_balls(self):
-        self.update_next_velocity()  # A kind of friction
+        #self.update_next_velocity()  # A kind of friction
         self.update_next_position()
-        self.check_ball_collisions()
+        #self.check_ball_collisions()
         #self.update_gravity()
         self.update_gravity_between_balls()
         self.update_position()
@@ -378,16 +409,17 @@ def ball_try():
         'color_border': (255, 255, 255),
         'color_playing_field': (0, 0, 0),
         # Balls
-        'gravity': np.array((0, 1)),
+        'gravity': np.array((0, 0.05)),
         'gravitational_constant': 1,
-        'friction': 0.99,
+        'friction': 1,
         'balls': [Ball(50, 1, (100, 350), (1, 1)),
                   Ball(50, 1, (300, 200), (0, 0))
                   ]
     }
     rand_gen = random.Random()
     ball_list = []
-    for i in range(30):
+    #ball_list.append(StationaryBall(30, -1, (300, 300), (0, 0)))
+    for i in range(20):
         sw = rand_gen.uniform(15, 40)
         px = rand_gen.uniform(0 + sw, dict_['dim_field_x'] - sw)
         py = rand_gen.uniform(0 + sw, dict_['dim_field_y'] - sw)
@@ -398,6 +430,7 @@ def ball_try():
 
         ball_list.append(Ball(radius=sw, mass=sw, pos=(px, py), vel=(vx, vy),
                               color=color))
+
 
     dict_['balls'] = ball_list
 
@@ -451,16 +484,18 @@ def gravity_try():
 
     dict_ = {
         # Variables
-        'dim_field_x': 1000,
-        'dim_field_y': 800,
+        'dim_field_x': 1500,
+        'dim_field_y': 750,
         'frames': 60,
         # Colors
         'color_border': (255, 255, 255),
         'color_playing_field': (0, 0, 0),
         # Balls
         'gravity': np.array((0, 0.1)),
-        'gravitational_constant': 0.5,
-        'friction': 0.99,
+        'gravitational_constant': 0.05,
+        'friction': 1,
+        'elasticity_factor_wall': 1,
+        'elasticity_factor_ball': 1,
         'balls': [Ball(50, 50, (100, 350), (0, 0)),
                   Ball(50, 50, (300, 200), (0, 0)),
                   Ball(25, 10, (400, 400), (0, 0))
@@ -479,7 +514,7 @@ def gravity_try():
              Ball(r3, r3**3, (x-100, y-100), (rand_gen.uniform(-10, 0), 0),
                   (0, 200, 0))]
     max_size = 12
-    for i in range(10):
+    for i in range(400):
         size = rand_gen.gauss(6, 2)
         px = (i * 2 * max_size + max_size) % dict_['dim_field_x']
         py = int((i * 2 * max_size + max_size) / dict_['dim_field_x']) * 2 * \
@@ -490,6 +525,7 @@ def gravity_try():
         ball = Ball(radius=size, mass=size**3, pos=(px, py), vel=(vx, vy),
                     color=color)
         balls.append(ball)
+    #balls.append(Ball(5, 6, color=(0, 0, 255)))
 
     dict_['balls'] = balls
 
